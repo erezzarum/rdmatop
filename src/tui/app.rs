@@ -200,30 +200,29 @@ impl RollingAvgState {
     }
 
     /// Compute the average of a single counter rate across a window of samples.
+    /// Only samples that contain the counter contribute; the divisor matches the
+    /// number of contributing samples so a counter that is briefly absent doesn't
+    /// pull the average toward zero.
     fn average_counter_rate(cr: &CounterRate, window: &[&PortThroughput]) -> CounterRate {
-        let n = window.len() as f64;
-        let sum_rate: f64 = window
+        let present: Vec<&CounterRate> = window
             .iter()
-            .filter_map(|s| {
-                s.counter_rates
-                    .iter()
-                    .find(|r| r.name == cr.name)
-                    .map(|r| r.rate)
-            })
-            .sum();
-        let sum_delta: u64 = window
-            .iter()
-            .filter_map(|s| {
-                s.counter_rates
-                    .iter()
-                    .find(|r| r.name == cr.name)
-                    .map(|r| r.delta)
-            })
-            .sum();
+            .filter_map(|s| s.counter_rates.iter().find(|r| r.name == cr.name))
+            .collect();
+        let n = present.len();
+        if n == 0 {
+            return CounterRate {
+                name: cr.name.clone(),
+                delta: 0,
+                rate: 0.0,
+                is_bytes: cr.is_bytes,
+            };
+        }
+        let sum_rate: f64 = present.iter().map(|r| r.rate).sum();
+        let sum_delta: u64 = present.iter().map(|r| r.delta).sum();
         CounterRate {
             name: cr.name.clone(),
-            delta: sum_delta / window.len() as u64,
-            rate: sum_rate / n,
+            delta: sum_delta / n as u64,
+            rate: sum_rate / n as f64,
             is_bytes: cr.is_bytes,
         }
     }
@@ -456,10 +455,16 @@ impl App {
 
     pub fn increase_avg_window(&mut self) {
         self.rolling_avg.increase_window();
+        if self.show_rolling_avg {
+            self.recompute_display();
+        }
     }
 
     pub fn decrease_avg_window(&mut self) {
         self.rolling_avg.decrease_window();
+        if self.show_rolling_avg {
+            self.recompute_display();
+        }
     }
 
     pub fn open_window_input(&mut self) {
@@ -476,6 +481,9 @@ impl App {
         if let Ok(val) = self.window_input_buf.parse::<usize>() {
             self.rolling_avg
                 .set_window(val.clamp(ROLLING_AVG_MIN_WINDOW, ROLLING_AVG_MAX_WINDOW));
+            if self.show_rolling_avg {
+                self.recompute_display();
+            }
         }
         self.show_window_input = false;
         self.window_input_buf.clear();

@@ -32,7 +32,7 @@ spec:
       containers:
         - name: rdmatop
           image: rdmatop:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           command: ["sleep", "infinity"]
           securityContext:
             capabilities:
