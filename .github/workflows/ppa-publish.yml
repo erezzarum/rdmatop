@@ -124,13 +124,17 @@ jobs:
           # offline cargo builds). debian/ and VCS metadata are excluded.
           PKG_DIR="rdmatop-${VERSION}"
           mkdir -p "/tmp/${PKG_DIR}"
+          # Anchor with a leading / so excludes apply only at the root
+          # of the transfer; vendored crates have their own .github/ dirs
+          # that must remain in the orig tarball or dpkg-source sees them
+          # as "unexpected upstream changes".
           rsync -a \
-            --exclude='.git' \
-            --exclude='.github' \
-            --exclude='debian' \
-            --exclude='.cargo-home' \
-            --exclude='target' \
-            --exclude='out' \
+            --exclude='/.git' \
+            --exclude='/.github' \
+            --exclude='/debian' \
+            --exclude='/.cargo-home' \
+            --exclude='/target' \
+            --exclude='/out' \
             ./ "/tmp/${PKG_DIR}/"
           tar -czf "../rdmatop_${VERSION}.orig.tar.gz" -C /tmp "${PKG_DIR}"
           rm -rf "/tmp/${PKG_DIR}"
