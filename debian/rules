@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+export CARGO_HOME = $(CURDIR)/.cargo-home
+
+%:
+	dh $@
+
+override_dh_auto_build:
+	cargo build --release --offline --frozen
+
+override_dh_auto_install:
+	install -D -m 0755 target/release/rdmatop \
+	    debian/rdmatop/usr/bin/rdmatop
+
+override_dh_auto_test:
+	# skip; PPA builders lack RDMA hardware
+
+override_dh_auto_clean:
+	cargo clean --offline || true
+	rm -rf $(CARGO_HOME)

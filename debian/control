@@ -1,0 +1,21 @@
+Source: rdmatop
+Section: net
+Priority: optional
+Maintainer: Chang Ning Tsai <spiderpower02@gmail.com>
+Build-Depends: debhelper-compat (= 13),
+               cargo,
+               rustc (>= 1.75)
+Standards-Version: 4.6.2
+Homepage: https://github.com/crazyguitar/rdmatop
+Vcs-Git: https://github.com/crazyguitar/rdmatop.git
+Vcs-Browser: https://github.com/crazyguitar/rdmatop
+Rules-Requires-Root: no
+
+Package: rdmatop
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: real-time TUI monitor for RDMA network interfaces
+ rdmatop displays per-queue RDMA counters in a terminal user
+ interface, supporting EFA and InfiniBand devices. It refreshes
+ counters at a configurable interval and shows rolling averages
+ useful for debugging high-performance networking workloads.
