@@ -115,11 +115,17 @@ jobs:
               "Release ${VERSION} for ${SERIES}."
           head -n 5 debian/changelog
 
-      - name: Build signed source package
+      - name: Build source package
         run: |
           set -eu
-          debuild --no-lintian -- -S -sa -k"$KEY_ID"
+          dpkg-buildpackage --build=source -sa -us -uc -ui
           ls -la ../
+
+      - name: Sign source package
+        run: |
+          set -eu
+          debsign -k"$KEY_ID" \
+            "../rdmatop_${VERSION}-1ppa1~${SERIES}1_source.changes"
 
       - name: Stage source artifacts
         if: always()
