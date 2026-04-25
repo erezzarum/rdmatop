@@ -119,15 +119,13 @@ jobs:
         run: |
           set -eu
           # 3.0 (quilt) source format requires ../rdmatop_<upstream>.orig.tar.gz.
-          # We synthesise one from the current source tree (which already
-          # contains vendor/ and .cargo/ — Launchpad's builders need both for
-          # offline cargo builds). debian/ and VCS metadata are excluded.
+          # The orig tarball is shared across all matrix series uploads, so it
+          # MUST be byte-identical regardless of which job builds it first.
+          # Launchpad rejects re-uploads of the same orig name with different
+          # SHA. We synthesise it deterministically: stable mtime, sorted
+          # entries, fixed owner, gzip with no embedded timestamp.
           PKG_DIR="rdmatop-${VERSION}"
           mkdir -p "/tmp/${PKG_DIR}"
-          # Anchor with a leading / so excludes apply only at the root
-          # of the transfer; vendored crates have their own .github/ dirs
-          # that must remain in the orig tarball or dpkg-source sees them
-          # as "unexpected upstream changes".
           rsync -a \
             --exclude='/.git' \
             --exclude='/.github' \
@@ -136,9 +134,19 @@ jobs:
             --exclude='/target' \
             --exclude='/out' \
             ./ "/tmp/${PKG_DIR}/"
-          tar -czf "../rdmatop_${VERSION}.orig.tar.gz" -C /tmp "${PKG_DIR}"
+          # Pin every file's mtime to the tag's commit time so the tarball
+          # contents are reproducible across matrix jobs.
+          SOURCE_DATE_EPOCH="$(git -C ./ log -1 --pretty=%ct 2>/dev/null || echo 0)"
+          export SOURCE_DATE_EPOCH
+          find "/tmp/${PKG_DIR}" -exec touch -h -d "@${SOURCE_DATE_EPOCH}" {} +
+          tar --sort=name \
+              --mtime="@${SOURCE_DATE_EPOCH}" \
+              --owner=0 --group=0 --numeric-owner \
+              --format=gnu \
+              -cf - -C /tmp "${PKG_DIR}" \
+            | gzip -n -9 > "../rdmatop_${VERSION}.orig.tar.gz"
           rm -rf "/tmp/${PKG_DIR}"
-          ls -la ../rdmatop_*.orig.tar.gz
+          sha256sum "../rdmatop_${VERSION}.orig.tar.gz"
 
       - name: Strip CI metadata from working tree
         run: |
